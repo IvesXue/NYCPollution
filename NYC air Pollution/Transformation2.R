@@ -1,6 +1,19 @@
 library(tidyverse)
 library(lubridate)
 
+# Function to standardize area names
+standardize_area_names <- function(area_name) {
+  case_when(
+    str_detect(area_name, "BX|Bronx") ~ "Bronx",
+    str_detect(area_name, "BK|Brooklyn") ~ "Brooklyn",
+    str_detect(area_name, "MN|Manhattan") ~ "Manhattan",
+    str_detect(area_name, "QN|Queens") ~ "Queens",
+    str_detect(area_name, "SI|Staten_Island") ~ "Staten Island",
+    str_detect(area_name, "CITY|Citywide") ~ "Citywide",
+    TRUE ~ area_name  # Default case if no match is found
+  )
+}
+
 # Step 1: Set working directory
 setwd("C:/Users/Ives Xue/Desktop/NYCPollution/NYC air Pollution/trends")
 
@@ -33,26 +46,10 @@ processed_data <- map2(datasets, file_paths, function(data, path) {
   data_long <- pivot_longer(data, cols = -c(Year, Month), names_to = "Location", values_to = base_rate_name) %>%
     mutate(Location = str_replace(Location, "^.*?_", ""), # Remove any prefix followed by underscore
            Area = standardize_area_names(Location)) %>%
-    select(-Location) %>%
-    relocate(Area, .after = Month) # Ensure Area is after Month
-  
-  data_long
+    select(Year, Month, Area, base_rate_name) # Keep only necessary columns
 })
 
-# Function to standardize area names
-standardize_area_names <- function(area_name) {
-  case_when(
-    str_detect(area_name, "BX|Bronx") ~ "Bronx",
-    str_detect(area_name, "BK|Brooklyn") ~ "Brooklyn",
-    str_detect(area_name, "MN|Manhattan") ~ "Manhattan",
-    str_detect(area_name, "QN|Queens") ~ "Queens",
-    str_detect(area_name, "SI|Staten_Island") ~ "Staten Island",
-    str_detect(area_name, "CITY|Citywide") ~ "Citywide",
-    TRUE ~ area_name  # Default case if no match is found
-  )
-}
-
-# Step 4: Combine all datasets and adjust column order
+# Step 4: Combine all datasets
 final_dataset <- reduce(processed_data, full_join, by = c("Year", "Month", "Area")) %>%
   # Reorder columns to place all rate columns after the Area
   select(Year, Month, Area, sort(setdiff(names(.), c("Year", "Month", "Area"))))
